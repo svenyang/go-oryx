@@ -1,5 +1,8 @@
 # go-oryx
 
+[![CircleCI](https://circleci.com/gh/ossrs/go-oryx/tree/develop.svg?style=svg&circle-token=3fd99d545de00283d726fe2fd274599046d0986e)](https://circleci.com/gh/ossrs/go-oryx/tree/develop)
+[![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/ossrs/go-oryx?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
+
 Oryx is next generation media streaming server, extract service to processes 
 which communicates over http with each other, to get more flexible, low latency,
 programmable and high maintainable server.
@@ -17,11 +20,12 @@ The architecture of oryx is a group of isolate processes:
 1. `rtmplb` rtmp frontend of oryx, proxy to backend streaming workers.
 1. `httplb` http flv/hls+ frontend of oryx, proxy to backend streaming workers.
 1. `apilb` http api frontend of oryx, proxy to backend api.
+1. `httpx-static` http and https static file server over [lego/acme](https://github.com/xenolf/lego/tree/master/acme) of [letsencrypt](https://letsencrypt.org/).
 1. `srs` the streaming worker, other stream worker is also ok.
 
 ```
                          +----------+
-                    +----+  API LB  |
+                    +----+  API LB  +
                     |    +----------+
                     |
                     |    +----------+

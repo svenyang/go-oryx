@@ -38,8 +38,8 @@ import (
 type WorkerGroup struct {
 	closing  chan bool
 	wait     *sync.WaitGroup
-	closed   bool
 	cleanups []func()
+	closed bool
 }
 
 func NewWorkerGroup() *WorkerGroup {
@@ -52,6 +52,11 @@ func NewWorkerGroup() *WorkerGroup {
 // interface io.Closer
 // notify and wait for all workers to quit.
 func (v *WorkerGroup) Close() error {
+	if v.closed {
+		return nil
+	}
+	v.closed = true
+
 	select {
 	case v.closing <- true:
 	default:
@@ -89,11 +94,12 @@ func (v *WorkerGroup) QuitForSignals(ctx ol.Context, signals ...os.Signal) {
 
 // start new goroutine to run pfn.
 // @remark the worker group will quit when each pfn done.
-// @remark ignore nil cleanup.
+// @remark cleanup should never be nil.
 func (v *WorkerGroup) ForkGoroutine(pfn func(), cleanup func()) {
-	if cleanup != nil {
-		v.cleanups = append(v.cleanups, cleanup)
+	if cleanup == nil {
+		panic("should specifies the cleanup.")
 	}
+	v.cleanups = append(v.cleanups, cleanup)
 
 	go func() {
 		v.wait.Add(1)
@@ -107,8 +113,6 @@ func (v *WorkerGroup) ForkGoroutine(pfn func(), cleanup func()) {
 // notify worker group to quit.
 // @remark user must use Close to wait for all workers cleanup and quit.
 func (v *WorkerGroup) quit() {
-	v.closed = true
-
 	select {
 	case v.closing <- true:
 	default:
@@ -121,9 +125,4 @@ func (v *WorkerGroup) quit() {
 func (v *WorkerGroup) Wait() {
 	<-v.closing
 	v.closing <- true
-}
-
-// whether worker group closed.
-func (v *WorkerGroup) Closed() bool {
-	return v.closed
 }

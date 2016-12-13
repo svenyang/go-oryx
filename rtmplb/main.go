@@ -180,12 +180,12 @@ func (v *proxy) serveRtmp(client *net.TCPConn) (err error) {
 
 	wg.ForkGoroutine(func() {
 		if nw, err = io.Copy(client, backend); err != nil {
-			if !wg.Closed() {
-				ol.E(ctx, fmt.Sprintf("proxy rtmp<=backend failed, nn=%v, err is %v", nw, err))
-			}
+			ol.E(ctx, fmt.Sprintf("proxy rtmp<=backend failed, nn=%v, err is %v", nw, err))
 			return
 		}
-	}, nil)
+	}, func(){
+		client.Close()
+	})
 	wg.ForkGoroutine(func() {
 		// write proxy header.
 		// @see https://github.com/ossrs/go-oryx/wiki/RtmpProxy
@@ -209,12 +209,12 @@ func (v *proxy) serveRtmp(client *net.TCPConn) (err error) {
 		}
 
 		if nr, err = io.Copy(backend, client); err != nil {
-			if !wg.Closed() {
-				ol.E(ctx, fmt.Sprintf("proxy rtmp=>backend failed, nn=%v, err is %v", nr, err))
-			}
+			ol.E(ctx, fmt.Sprintf("proxy rtmp=>backend failed, nn=%v, err is %v", nr, err))
 			return
 		}
-	}, nil)
+	}, func(){
+		client.Close()
+	})
 
 	wg.Wait()
 	return
@@ -334,7 +334,7 @@ func main() {
 		for {
 			var c *net.TCPConn
 			if c, err = listener.AcceptTCP(); err != nil {
-				if err != kernel.ListenerDisposed {
+				if err != io.EOF {
 					ol.E(ctx, "accept failed, err is", err)
 				}
 				break
@@ -369,9 +369,7 @@ func main() {
 
 		server := &http.Server{Addr: apiAddr, Handler: nil}
 		if err = server.Serve(apiListener); err != nil {
-			if !wg.Closed() {
-				ol.E(ctx, "http serve failed, err is", err)
-			}
+			ol.E(ctx, "http serve failed, err is", err)
 			return
 		}
 	}, func() {
